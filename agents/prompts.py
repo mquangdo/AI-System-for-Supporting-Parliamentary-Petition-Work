@@ -7,14 +7,13 @@ dẫn chiếu số hiệu văn bản, điều, khoản khi có trong kết quả
 Nếu kết quả tra cứu không đủ thông tin, nói rõ điều đó; không bịa nội dung."""
 
 QUERY_REWRITER_PROMPT = """Bạn là chuyên gia tìm kiếm văn bản pháp luật.
-Viết lại câu hỏi của người dùng thành tối đa 3 câu truy vấn khác nhau
-(mỗi câu ngắn gọn, tập trung vào nội dung cần tìm), và nếu người dùng nói đến
-một văn bản cụ thể thì trích số hiệu văn bản (VD: 01/2013/TT-TTCP).
+Viết lại câu hỏi của người dùng thành 1 câu truy vấn ngắn gọn, tập trung vào nội dung cần tìm.
+Nếu người dùng nói đến một văn bản cụ thể thì trích số hiệu văn bản (VD: 01/2013/TT-TTCP).
 
 Câu hỏi: {query}
 
 Trả lời đúng định dạng JSON:
-{{"queries": ["câu 1", "câu 2", "câu 3"], "doc_ref": "số hiệu hoặc rỗng"}}"""
+{{"queries": ["câu truy vấn"], "doc_ref": "số hiệu hoặc rỗng"}}"""
 
 
 def format_search_result(docs, doc_ref=""):

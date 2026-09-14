@@ -4,6 +4,7 @@
 """
 
 import json
+from functools import lru_cache
 from typing import TypedDict
 
 from langchain_qdrant import QdrantVectorStore
@@ -15,6 +16,24 @@ from agents import prompts
 from agents.config import get_settings
 from agents.embeddings import get_embeddings
 from agents.llm import make_chat_model
+
+
+@lru_cache(maxsize=1)
+def _get_rewrite_llm(model=None):
+    """Cache ChatNVIDIA cho rewrite node."""
+    return make_chat_model(model, temperature=0.0)
+
+
+@lru_cache(maxsize=1)
+def _get_store(collection_name, url, api_key, timeout):
+    """Cache QdrantVectorStore (kết nối 1 lần)."""
+    return QdrantVectorStore.from_existing_collection(
+        embedding=get_embeddings(),
+        collection_name=collection_name,
+        url=url,
+        api_key=api_key or None,
+        timeout=timeout or None,
+    )
 
 
 class RetrievalState(TypedDict, total=False):
@@ -61,8 +80,8 @@ class RetrievalAgent:
         return graph.compile()
 
     def _rewrite(self, state):
-        """LLM viết lại query thành 1-3 câu truy vấn + trích doc_ref từ câu hỏi."""
-        llm = make_chat_model(self._model, temperature=0.0)
+        """LLM viết lại query thành 1 câu truy vấn + trích doc_ref từ câu hỏi."""
+        llm = _get_rewrite_llm(self._model)
         query = state["query"]
         try:
             raw = llm.invoke(
@@ -73,17 +92,16 @@ class RetrievalAgent:
             doc_ref = str(data.get("doc_ref") or "").strip()
         except Exception:
             queries, doc_ref = [query], ""
-        return {"queries": queries[:3], "doc_ref": doc_ref}
+        return {"queries": [queries[0]], "doc_ref": doc_ref}
 
     def _retrieve(self, state):
         """Gọi Qdrant với mỗi query, dedup theo chunk_id, trả về danh sách Document."""
         settings = get_settings()
-        store = QdrantVectorStore.from_existing_collection(
-            embedding=get_embeddings(),
-            collection_name=settings.qdrant_collection,
-            url=settings.qdrant_url,
-            api_key=settings.qdrant_api_key or None,
-            timeout=settings.timeout_sec or None,
+        store = _get_store(
+            settings.qdrant_collection,
+            settings.qdrant_url,
+            settings.qdrant_api_key,
+            settings.timeout_sec,
         )
         retriever = store.as_retriever(
             search_type="similarity",
@@ -104,7 +122,7 @@ class RetrievalAgent:
     def _doc_ref_filter(doc_ref):
         """Tạo filter Qdrant: chỉ lấy chunks có title chứa doc_ref (full-text match)."""
         return Filter(
-            must=[FieldCondition(key="metadata.title", match=MatchText(value=doc_ref))]
+            must=[FieldCondition(key="metadata.title", match=MatchText(text=doc_ref))]
         )
 
     def _format(self, state):
