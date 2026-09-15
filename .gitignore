@@ -11,3 +11,9 @@ wheels/
 
 # Secrets
 .env
+
+#data
+data/
+qdrant_data/
+
+
