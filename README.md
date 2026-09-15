@@ -26,11 +26,15 @@ agents/
   visualize.py     # in sơ đồ Mermaid/ASCII + lưu docs/graphs
 ```
 
-```
-START ──▶ orchestrator_node ──(action=search)──▶ retrieve_node ──▶ summarize_node
-             ▲                                        │                   │
-             └────────────────────────────────────────┘                   │
-             └──(action=answer)───────────────────────────────────────────▶ END
+```mermaid
+graph TD
+  ST[START] --> ORCH[Orchestrator - quyet dinh huong]
+  ORCH -->|action=search| RET[Retrieve - tra cuu Qdrant<br/>rewrite + filter doc_ref]
+  RET --> SUM[Summarize - tong hop ket qua]
+  SUM -->|thieu co so, can tra cuu tiep| ORCH
+  SUM -->|du co so| AN[Answer - ket luan + trich dan]
+  AN --> FI[END]
+  ORCH -->|action=answer<br/>co cau tra loi san| AN
 ```
 
 Chi tiết: `docs/agents/main_agent_rag.md` | Thiết kế hệ thống dài hạn: `docs/system/DESIGN.md`.
